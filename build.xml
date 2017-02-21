@@ -22,10 +22,11 @@
     <target name="build">
     	<mkdir dir="${build.dir}" />
 	<jar destfile="${build.dir}/${ant.project.name}.jar" basedir="${classes.dir}">
-		<manifest>
-			<attribute name="Main-Class" value="${mainclass}" />
-			<attribute name="Class-path" value="." />
-		</manifest>
+	    <zipgroupfileset dir="./lib/" includes="*.jar" />	
+	    <manifest>
+		<attribute name="Main-Class" value="${mainclass}" />
+		<attribute name="Class-path" value="." />
+	    </manifest>
 	</jar>
     </target>
     <target name="main" depends="clean,compile,build" />
