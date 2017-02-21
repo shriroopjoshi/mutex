@@ -1,19 +1,32 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<project default="create_run_jar" name="Create Runnable Jar for Project mutex">
-    <!--this file was created by Eclipse Runnable JAR Export Wizard-->
-    <!--ANT 1.7 is required                                        -->
-    <!--define folder properties-->
-    <property name="dir.buildfile" value="."/>
-    <property name="dir.workspace" value="${dir.buildfile}/.."/>
-    <property name="dir.jarfile" value="${dir.buildfile}/target"/>
-    <target name="create_run_jar">
-        <jar destfile="${dir.jarfile}/app.jar" filesetmanifest="mergewithoutmain">
-            <manifest>
-                <attribute name="Main-Class" value="app.Main"/>
-                <attribute name="Class-Path" value="."/>
-            </manifest>
-            <fileset dir="${dir.buildfile}/bin"/>
-            <zipfileset excludes="META-INF/*.SF" src="${dir.buildfile}/lib/gson-2.8.0.jar"/>
-        </jar>
+<project default="main" name="mutex">
+    <property name="src.dir" value="src/" />
+    <property name="build.dir" value="build/" />
+    <property name="classes.dir" value="classes/" />
+    <property name="mainclass" value="app.Main" />
+    <path id="mutex.classpath">
+        <fileset dir="./lib/">
+		<include name="*.jar" />
+	</fileset>
+    </path>
+    <target name="clean">
+    	<delete dir="${classes.dir}" />
+	<delete dir="${build.dir}" />
     </target>
+    <target name="compile">
+    	<mkdir dir="${classes.dir}" />
+	<javac srcdir="${src.dir}" destdir="${classes.dir}" includeantruntime="false">
+		<classpath refid="mutex.classpath" />
+	</javac>
+    </target>
+    <target name="build">
+    	<mkdir dir="${build.dir}" />
+	<jar destfile="${build.dir}/${ant.project.name}.jar" basedir="${classes.dir}">
+		<manifest>
+			<attribute name="Main-Class" value="${mainclass}" />
+			<attribute name="Class-path" value="." />
+		</manifest>
+	</jar>
+    </target>
+    <target name="main" depends="clean,compile,build" />
 </project>
