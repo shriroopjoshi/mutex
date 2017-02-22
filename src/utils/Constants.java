@@ -7,4 +7,5 @@ public class Constants {
     
     public static String PROC_ZERO_HOST;
     public static int NUM_PROC;
+	public static int TIME_UNIT;
 }

@@ -17,7 +17,6 @@ public class ReadyReplyMessage extends Message {
 		return hosts;
 	}
 	
-	
 	public static ReadyReplyMessage getObjectFromString(String object) {
 		Gson gson = new GsonBuilder().setLenient().create();
 		return gson.fromJson(object, ReadyReplyMessage.class);

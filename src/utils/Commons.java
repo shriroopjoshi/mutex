@@ -4,6 +4,8 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStreamWriter;
+import java.net.Socket;
 import java.util.Properties;
 
 public class Commons {
@@ -30,5 +32,11 @@ public class Commons {
             System.exit(1);
         }
         return prop;
-    }	
+    }
+    
+    public static void writeToSocket(Socket s, String message) throws IOException {
+    	OutputStreamWriter osw = new OutputStreamWriter(s.getOutputStream(), "UTF-8");
+        osw.append(message).append("\n");
+        osw.flush();
+    }
 }

@@ -3,7 +3,6 @@ package process;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -23,14 +22,14 @@ public class PZero {
 		Commons.log("Reading configurations", 0);
 		String configFile = "resources/config.properties";
         Properties configs = Commons.loadProperties(configFile);
-        Constants.LISTENING_PORT = Integer.parseInt(configs.getProperty("process.port"));
+        //Constants.LISTENING_PORT = Integer.parseInt(configs.getProperty("process.port"));
         Constants.PROC_ZERO_PORT = Integer.parseInt(configs.getProperty("processzero.port"));
         Constants.NUM_PROC = Integer.parseInt(configs.getProperty("number.process"));
+        Constants.PROC_ZERO_HOST = configs.getProperty("processzero.host");
         server = new ServerSocket(Constants.PROC_ZERO_PORT);
         hosts = new ArrayList<>(Constants.NUM_PROC);
 	}
 	
-	@SuppressWarnings("resource")
 	public void start() throws IOException {
 		Commons.log("Starting process", 0);
 		int counter = 0;
@@ -39,6 +38,7 @@ public class PZero {
             BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             ReadyMessage msg = ReadyMessage.getObjectFromString(br.readLine());
             Commons.log("Process started at " + msg.getHost(), 0);
+            Commons.log("Message: ", 0);
             hosts.add(msg.getHost());
             counter++;
         }
@@ -46,8 +46,7 @@ public class PZero {
 		ReadyReplyMessage rrm = new ReadyReplyMessage(hosts);
 		for (String host: hosts) {
 			Socket s = new Socket(host, Constants.LISTENING_PORT);
-			PrintWriter pw = new PrintWriter(s.getOutputStream());
-			pw.write(rrm + "\n");
+			Commons.writeToSocket(s, rrm.toString());
 		}
 		Commons.log("Exiting now", 0);
 	}

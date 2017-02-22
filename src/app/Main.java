@@ -10,7 +10,7 @@ import utils.Constants;
 
 public class Main {
 
-	public static void main(String[] args) throws IOException {
+	public static void main(String[] args) throws IOException, InterruptedException {
 		// TODO Auto-generated method stub
 		if(args.length != 1) {
 			System.err.println("USAGE");
@@ -27,6 +27,7 @@ public class Main {
 	        Constants.LISTENING_PORT = Integer.parseInt(configs.getProperty("process.port"));
 	        Constants.PROC_ZERO_PORT = Integer.parseInt(configs.getProperty("processzero.port"));
 	        Constants.PROC_ZERO_HOST = configs.getProperty("processzero.host");
+	        Constants.TIME_UNIT = Integer.parseInt(configs.getProperty("process.timeunit"));
 	        Process process = new Process();
 	        process.start();
 		}
