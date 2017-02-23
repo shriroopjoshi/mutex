@@ -15,7 +15,7 @@
     </target>
     <target name="compile">
     	<mkdir dir="${classes.dir}" />
-	<javac srcdir="${src.dir}" destdir="${classes.dir}" includeantruntime="false">
+	<javac srcdir="${src.dir}" destdir="${classes.dir}" includeantruntime="false" executable="../java/bin/javac" debug="true">
 		<classpath refid="mutex.classpath" />
 	</javac>
     </target>

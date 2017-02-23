@@ -18,4 +18,15 @@ public class Clock {
 		tick += d;
 		return tick;
 	}
+	
+	public int update(int tick) {
+		this.tick += d;
+		if(this.tick < tick + d)
+			this.tick = tick + d;
+		return this.tick;
+	}
+	
+	public int peek() {
+		return tick;
+	}
 }

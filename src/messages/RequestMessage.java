@@ -7,10 +7,12 @@ public class RequestMessage extends Message {
 
 	int pid;
 	int timestamp;
+	String name;
 	
 	public RequestMessage(int pid, int timestamp) {
 		this.pid = pid;
 		this.timestamp = timestamp;
+		this.name = "RequestMessage";
 	}
 	
 	public int getPid() {

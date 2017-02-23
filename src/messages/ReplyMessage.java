@@ -6,13 +6,21 @@ import com.google.gson.GsonBuilder;
 public class ReplyMessage extends Message {
 
 	int pid;
+	int timestamp;
+	String name;
 	
-	public ReplyMessage(int pid) {
+	public ReplyMessage(int pid, int timestamp) {
 		this.pid = pid;
+		this.timestamp = timestamp;
+		this.name = "ReplyMessage";
 	}
 	
 	public int getPid() {
 		return pid;
+	}
+	
+	public int getTimestamp() {
+		return timestamp;
 	}
 	
 	public static ReplyMessage getObjectFromString(String object) {

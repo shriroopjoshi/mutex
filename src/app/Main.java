@@ -29,7 +29,7 @@ public class Main {
 	        Constants.PROC_ZERO_HOST = configs.getProperty("processzero.host");
 	        Constants.TIME_UNIT = Integer.parseInt(configs.getProperty("process.timeunit"));
 	        Process process = new Process();
-	        process.start();
+	        process.startProcess();
 		}
 	}
 

@@ -5,8 +5,11 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Properties;
+
+
 
 public class Commons {
 
@@ -39,4 +42,42 @@ public class Commons {
         osw.append(message).append("\n");
         osw.flush();
     }
+
+	public static ServerSocket requestCS(ServerSocket criticalSection) throws IOException {
+		if(criticalSection == null) {
+			// Enter critical section
+			ServerSocket s = new ServerSocket(Constants.REQUESTING_CS_PORT);
+			return s;
+		} else {
+			// Exit requesting mode
+			criticalSection.close();
+			return null;
+		}
+	}
+	
+	public static boolean isProcessRequestingCS() {
+		try(Socket s = new Socket("localhost", Constants.REQUESTING_CS_PORT)) {
+			return true;
+		} catch (IOException ex) {
+			return false;
+		}
+	}
+	
+	public static ServerSocket executeCS(ServerSocket criticalSection) throws IOException {
+		if(criticalSection == null) {
+			ServerSocket s = new ServerSocket(Constants.EXECUTING_CS_PORT);
+			return s;
+		} else {
+			criticalSection.close();
+			return null;
+		}
+	}
+	
+	public static boolean isProcessExecutingCS() {
+		try(Socket s = new Socket("localhost", Constants.EXECUTING_CS_PORT)) {
+			return true;
+		} catch (IOException ex) {
+			return false;
+		}
+	}
 }

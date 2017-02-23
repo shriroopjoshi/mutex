@@ -33,20 +33,23 @@ public class PZero {
 	public void start() throws IOException {
 		Commons.log("Starting process", 0);
 		int counter = 0;
+		ArrayList<Socket> sockets = new ArrayList<>();
 		while (counter < Constants.NUM_PROC) {
             Socket socket = server.accept();
             BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             ReadyMessage msg = ReadyMessage.getObjectFromString(br.readLine());
             Commons.log("Process started at " + msg.getHost(), 0);
-            Commons.log("Message: ", 0);
+            Commons.log("Message: " + msg.toString(), 0);
             hosts.add(msg.getHost());
+            sockets.add(socket);
             counter++;
         }
 		Commons.log("Sending replies", 0);
+		counter = 0;
 		ReadyReplyMessage rrm = new ReadyReplyMessage(hosts);
 		for (String host: hosts) {
-			Socket s = new Socket(host, Constants.LISTENING_PORT);
-			Commons.writeToSocket(s, rrm.toString());
+			Commons.log("Sending reply to " + host, 0);
+			Commons.writeToSocket(sockets.get(counter++), rrm.toString());
 		}
 		Commons.log("Exiting now", 0);
 	}
