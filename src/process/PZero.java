@@ -17,39 +17,59 @@ public class PZero {
 
 	ServerSocket server;
 	ArrayList<String> hosts;
-	
+
 	public PZero() throws IOException {
 		Commons.log("Reading configurations", 0);
 		String configFile = "resources/config.properties";
-        Properties configs = Commons.loadProperties(configFile);
-        //Constants.LISTENING_PORT = Integer.parseInt(configs.getProperty("process.port"));
-        Constants.PROC_ZERO_PORT = Integer.parseInt(configs.getProperty("processzero.port"));
-        Constants.NUM_PROC = Integer.parseInt(configs.getProperty("number.process"));
-        Constants.PROC_ZERO_HOST = configs.getProperty("processzero.host");
-        server = new ServerSocket(Constants.PROC_ZERO_PORT);
-        hosts = new ArrayList<>(Constants.NUM_PROC);
+		Properties configs = Commons.loadProperties(configFile);
+		// Constants.LISTENING_PORT =
+		// Integer.parseInt(configs.getProperty("process.port"));
+		Constants.PROC_ZERO_PORT = Integer.parseInt(configs.getProperty("processzero.port"));
+		Constants.NUM_PROC = Integer.parseInt(configs.getProperty("number.process"));
+		Constants.PROC_ZERO_HOST = configs.getProperty("processzero.host");
+		server = new ServerSocket(Constants.PROC_ZERO_PORT);
+		hosts = new ArrayList<>(Constants.NUM_PROC);
 	}
-	
+
 	public void start() throws IOException {
 		Commons.log("Starting process", 0);
 		int counter = 0;
 		ArrayList<Socket> sockets = new ArrayList<>();
 		while (counter < Constants.NUM_PROC) {
-            Socket socket = server.accept();
-            BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            ReadyMessage msg = ReadyMessage.getObjectFromString(br.readLine());
-            Commons.log("Process started at " + msg.getHost(), 0);
-            Commons.log("Message: " + msg.toString(), 0);
-            hosts.add(msg.getHost());
-            sockets.add(socket);
-            counter++;
-        }
+			Socket socket = server.accept();
+			BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+			ReadyMessage msg = ReadyMessage.getObjectFromString(br.readLine());
+			Commons.log("Process started at " + msg.getHost(), 0);
+			Commons.log("Message: " + msg.toString(), 0);
+			hosts.add(msg.getHost());
+			sockets.add(socket);
+			counter++;
+		}
 		Commons.log("Sending replies", 0);
 		counter = 0;
 		ReadyReplyMessage rrm = new ReadyReplyMessage(hosts);
-		for (String host: hosts) {
+		for (String host : hosts) {
 			Commons.log("Sending reply to " + host, 0);
 			Commons.writeToSocket(sockets.get(counter++), rrm.toString());
+		}
+
+		counter = 0;
+		sockets = new ArrayList<>();
+		while (counter < Constants.NUM_PROC) {
+			Socket socket = server.accept();
+			BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+			ReadyMessage msg = ReadyMessage.getObjectFromString(br.readLine());
+			Commons.log("Process started at " + msg.getHost(), 0);
+			Commons.log("Message: " + msg.toString(), 0);
+			hosts.add(msg.getHost());
+			sockets.add(socket);
+			counter++;
+		}
+		Commons.log("Sending replies", 0);
+		counter = 0;
+		for (String host : hosts) {
+			Commons.log("Sending reply to " + host, 0);
+			Commons.writeToSocket(sockets.get(counter++), "EXIT");
 		}
 		Commons.log("Exiting now", 0);
 	}

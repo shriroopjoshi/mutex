@@ -4,6 +4,7 @@
     <property name="build.dir" value="build/" />
     <property name="classes.dir" value="classes/" />
     <property name="mainclass" value="app.Main" />
+    <property name="javac.path" value="../java/bin/javac" />
     <path id="mutex.classpath">
         <fileset dir="./lib/">
 		<include name="*.jar" />
@@ -15,7 +16,7 @@
     </target>
     <target name="compile">
     	<mkdir dir="${classes.dir}" />
-	<javac srcdir="${src.dir}" destdir="${classes.dir}" includeantruntime="false" executable="../java/bin/javac" debug="true">
+	<javac srcdir="${src.dir}" destdir="${classes.dir}" includeantruntime="false" executable="${javac.path}" debug="true">
 		<classpath refid="mutex.classpath" />
 	</javac>
     </target>
