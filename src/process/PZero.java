@@ -19,11 +19,9 @@ public class PZero {
 	ArrayList<String> hosts;
 
 	public PZero() throws IOException {
-		Commons.log("Reading configurations", 0);
+		Commons.log("Reading configurations", -1);
 		String configFile = "resources/config.properties";
 		Properties configs = Commons.loadProperties(configFile);
-		// Constants.LISTENING_PORT =
-		// Integer.parseInt(configs.getProperty("process.port"));
 		Constants.PROC_ZERO_PORT = Integer.parseInt(configs.getProperty("processzero.port"));
 		Constants.NUM_PROC = Integer.parseInt(configs.getProperty("number.process"));
 		Constants.PROC_ZERO_HOST = configs.getProperty("processzero.host");
@@ -32,45 +30,40 @@ public class PZero {
 	}
 
 	public void start() throws IOException {
-		Commons.log("Starting process", 0);
+		Commons.log("Starting process", -1);
 		int counter = 0;
 		ArrayList<Socket> sockets = new ArrayList<>();
 		while (counter < Constants.NUM_PROC) {
 			Socket socket = server.accept();
 			BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 			ReadyMessage msg = ReadyMessage.getObjectFromString(br.readLine());
-			Commons.log("Process started at " + msg.getHost(), 0);
-			Commons.log("Message: " + msg.toString(), 0);
+			Commons.log("Process started at " + msg.getHost(), -1);
 			hosts.add(msg.getHost());
 			sockets.add(socket);
 			counter++;
 		}
-		Commons.log("Sending replies", 0);
-		counter = 0;
 		ReadyReplyMessage rrm = new ReadyReplyMessage(hosts);
-		for (String host : hosts) {
-			Commons.log("Sending reply to " + host, 0);
-			Commons.writeToSocket(sockets.get(counter++), rrm.toString());
+		for (Socket socket : sockets) {
+			Commons.writeToSocket(socket, rrm.toString());
 		}
-
+		
+		Commons.log("Waiting for exit messages", -1);
 		counter = 0;
 		sockets = new ArrayList<>();
 		while (counter < Constants.NUM_PROC) {
 			Socket socket = server.accept();
 			BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 			ReadyMessage msg = ReadyMessage.getObjectFromString(br.readLine());
-			Commons.log("Process started at " + msg.getHost(), 0);
-			Commons.log("Message: " + msg.toString(), 0);
+			Commons.log("Process terminated at " + msg.getHost(), -1);
 			hosts.add(msg.getHost());
 			sockets.add(socket);
 			counter++;
 		}
-		Commons.log("Sending replies", 0);
 		counter = 0;
-		for (String host : hosts) {
-			Commons.log("Sending reply to " + host, 0);
-			Commons.writeToSocket(sockets.get(counter++), "EXIT");
+		for (Socket socket : sockets) {
+			Commons.writeToSocket(socket, "EXIT");
 		}
-		Commons.log("Exiting now", 0);
+
+		Commons.log("Exiting now", -1);
 	}
 }

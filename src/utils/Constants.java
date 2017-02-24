@@ -12,4 +12,6 @@ public class Constants {
 	static final int REQUESTING_CS_PORT = 8990;
 	static final int EXECUTING_CS_PORT = 8992;
 	
+	public static int PHASE_ONE_COUNT;
+	public static int PHASE_TWO_COUNT;
 }

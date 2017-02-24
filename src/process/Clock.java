@@ -10,16 +10,16 @@ public class Clock {
 		this.d = 1;
 	}
 	
-	public void setD(int d) {
+	public synchronized void setD(int d) {
 		this.d = d;
 	}
 	
-	public int event() {
+	public synchronized int event() {
 		tick += d;
 		return tick;
 	}
 	
-	public int update(int tick) {
+	public synchronized int update(int tick) {
 		this.tick += d;
 		if(this.tick < tick + d)
 			this.tick = tick + d;

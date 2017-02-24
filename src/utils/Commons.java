@@ -8,6 +8,7 @@ import java.io.OutputStreamWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Properties;
+import java.util.Random;
 
 
 
@@ -18,7 +19,7 @@ public class Commons {
 	}
 	
 	public static void log(String message, int pid) {
-		System.out.println("[PROCESS - " + pid + "]: " + message);
+		System.out.println("[PROCESS - " + (pid + 1) + "]: " + message);
 	}
 	
     public static Properties loadProperties(String filename) {
@@ -78,6 +79,24 @@ public class Commons {
 			return true;
 		} catch (IOException ex) {
 			return false;
+		}
+	}
+	
+	public static int wait(int min, int max) {
+		int t = new Random().nextInt(max - min + 1) + min;
+		busywait(t);
+		return t;
+	}
+	
+	public static void wait(int timeunits) {
+		busywait(timeunits);
+	}
+	
+	private static void busywait(int t) {
+		long now = System.currentTimeMillis();
+		long waitTill = now + t * Constants.TIME_UNIT;
+		while(now < waitTill) {
+			now = System.currentTimeMillis();
 		}
 	}
 }
