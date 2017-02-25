@@ -83,29 +83,31 @@ public class Process implements Observer {
 		t.setName("ReceiverThread");
 		t.start();
 
-		Commons.log("Starting PHASE-I", processNumber);
 		phaseOne();
 	}
 
-	private void phaseOne() throws InterruptedException, UnknownHostException, IOException {
+	private void phaseOne() throws UnknownHostException, IOException {
+		Commons.log("Starting PHASE-I", processNumber);
 		count = 0;
 		phaseCount = Constants.PHASE_ONE_COUNT;
 		phase = Phases.PHASE_ONE;
 		requestCriticalSection();
 	}
-	
+
+	private void phaseTwo() throws UnknownHostException, IOException {
+		Commons.log("Starting PHASE-II", processNumber);
+		count = 0;
+		phaseCount = Constants.PHASE_TWO_COUNT;
+		phase = Phases.PHASE_TWO;
+		if (processNumber % 2 != 0) {
+			requestCriticalSection();
+		} else {
+			count++;
+		}
+	}
 
 	private void requestCriticalSection() throws UnknownHostException, IOException {
-		// Check if the given number of critical sections are completed
-		if (count >= phaseCount) {
-			if (phase == Phases.PHASE_TWO)
-				exit();
-			else {
-				exit();
-				
-				//phaseTwo();
-			}
-		}
+		Commons.log("Waiting...", processNumber);
 		// busy-waiting before requesting critical section
 		if (phase == Phases.PHASE_ONE) {
 			int t = Commons.wait(5, 10);
@@ -129,7 +131,8 @@ public class Process implements Observer {
 	private void criticalSection() {
 		this.isRequestingCS = false;
 		this.isExecutingCS = true;
-		Commons.log("\t\t\t\t* * *\n\t\t\tEntering CRITICAL SECTION at t = " + clock.peek() + "\n\t\t\t\t\t* * *", processNumber);
+		Commons.log("\t\t\t\t* * *\n\t\t\tEntering CRITICAL SECTION at t = " + clock.peek() + "\n\t\t\t\t\t* * *",
+				processNumber);
 		Commons.wait(3);
 		this.isExecutingCS = false;
 		count++;
@@ -166,21 +169,21 @@ public class Process implements Observer {
 			if (arg instanceof ReplyMessage) {
 				ReplyMessage msg = (ReplyMessage) arg;
 				tick = clock.update(msg.getTimestamp());
-				Commons.log("Received REPLY from PROCESS - " + msg.getPid() + " at t = " + tick, processNumber);
+				Commons.log("Received REPLY from PROCESS - " + (msg.getPid() + 1) + " at t = " + tick, processNumber);
 				replySet[msg.getPid()] = true;
 				tryCriticalSection();
 			} else if (arg instanceof RequestMessage) {
 				RequestMessage msg = (RequestMessage) arg;
 				tick = clock.update(msg.getTimestamp());
-				Commons.log("Received REQUEST from PROCESS - " + msg.getPid() + " at t = " + tick, processNumber);
+				Commons.log("Received REQUEST from PROCESS - " + (msg.getPid() + 1) + " at t = " + tick, processNumber);
 				if (!this.isRequestingCS) {
 					ReplyMessage rm = new ReplyMessage(processNumber, tick);
-					Commons.log("Sending REPLY to PROCESS - " + rm.getPid() + " at t = " + tick, processNumber);
+					Commons.log("Sending REPLY to PROCESS - " + (rm.getPid() + 1) + " at t = " + tick, processNumber);
 					sendMessage(msg.getPid(), rm.toString());
 				} else if (!this.isExecutingCS) {
 					if (requestTimestamp > tick) {
 						ReplyMessage rm = new ReplyMessage(processNumber, tick);
-						Commons.log("Sending REPLY to PROCESS - " + rm.getPid() + " at t = " + tick,
+						Commons.log("Sending REPLY to PROCESS - " + (rm.getPid() + 1) + " at t = " + tick,
 								processNumber);
 						sendMessage(msg.getPid(), rm.toString());
 					} else {
@@ -221,7 +224,23 @@ public class Process implements Observer {
 			criticalSection();
 			try {
 				sendDeferedReplies();
-				requestCriticalSection();
+				if (count >= phaseCount) {
+					if (phase == Phases.PHASE_ONE) {
+						phaseTwo();
+					} else {
+						exit();
+					}
+				} else {
+					if (phase == Phases.PHASE_ONE) {
+						requestCriticalSection();
+					} else {
+						if (processNumber % 2 != 0) {
+							requestCriticalSection();
+						} else {
+							count++;
+						}
+					}
+				}
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -235,7 +254,7 @@ public class Process implements Observer {
 			int tick = clock.event();
 			for (Integer pid : deferSet) {
 				ReplyMessage rm = new ReplyMessage(processNumber, tick);
-				Commons.log("Sending REPLY to PROCESS - " + rm.getPid() + " at t = " + tick, processNumber);
+				Commons.log("Sending REPLY to PROCESS - " + (rm.getPid() + 1) + " at t = " + tick, processNumber);
 				sendMessage(pid, rm.toString());
 			}
 			deferSet = null;
