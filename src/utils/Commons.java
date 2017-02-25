@@ -14,11 +14,11 @@ import java.util.Random;
 
 public class Commons {
 
-	public static void log(String message) {
+	public static synchronized void log(String message) {
 		System.out.println("[PROCESS]: " + message);
 	}
 	
-	public static void log(String message, int pid) {
+	public static synchronized void log(String message, int pid) {
 		System.out.println("[PROCESS - " + (pid + 1) + "]: " + message);
 	}
 	
