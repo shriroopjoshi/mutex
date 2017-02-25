@@ -13,6 +13,12 @@ import messages.ReadyReplyMessage;
 import utils.Commons;
 import utils.Constants;
 
+/**
+ * Implementation of PROC-0.
+ * It send ACK to all nodes when they are ready, and ACK to exit after completion.
+ * @author shriroop
+ *
+ */
 public class PZero {
 
 	ServerSocket server;
@@ -30,6 +36,9 @@ public class PZero {
 	}
 
 	public void start() throws IOException {
+		/*
+		 * Wait till all processes are ready
+		 */
 		Commons.log("Starting process", -1);
 		int counter = 0;
 		ArrayList<Socket> sockets = new ArrayList<>();
@@ -42,11 +51,17 @@ public class PZero {
 			sockets.add(socket);
 			counter++;
 		}
+		/*
+		 * Send the IP address of all nodes to every node as ACK
+		 */
 		ReadyReplyMessage rrm = new ReadyReplyMessage(hosts);
 		for (Socket socket : sockets) {
 			Commons.writeToSocket(socket, rrm.toString());
 		}
 		
+		/*
+		 * Wait till all process complete execution
+		 */
 		Commons.log("Waiting for exit messages", -1);
 		counter = 0;
 		sockets = new ArrayList<>();
@@ -60,6 +75,9 @@ public class PZero {
 			counter++;
 		}
 		counter = 0;
+		/*
+		 * Send ACK to all so that everyone can exit
+		 */
 		for (Socket socket : sockets) {
 			Commons.writeToSocket(socket, "EXIT");
 		}

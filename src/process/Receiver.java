@@ -11,6 +11,12 @@ import messages.Message;
 import messages.ReplyMessage;
 import messages.RequestMessage;
 
+/**
+ * An implementation of receiving part of the algorithm.
+ * This class receives the messages and forwards it to the Process
+ * @author shriroop
+ *
+ */
 public class Receiver extends Observable implements Runnable {
 
 	private ServerSocket server;

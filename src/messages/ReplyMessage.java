@@ -3,6 +3,12 @@ package messages;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+/**
+ * Reply message sent by nodes to indicate approval for other node to enter
+ * critical section
+ * @author shriroop
+ *
+ */
 public class ReplyMessage extends Message {
 
 	int pid;

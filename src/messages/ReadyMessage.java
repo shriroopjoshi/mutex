@@ -3,6 +3,11 @@ package messages;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+/**
+ * ReadyMessage is Message sent by host to PROC-0 to indicate it is ready
+ * @author shriroop
+ *
+ */
 public class ReadyMessage extends Message {
 
 	public String host;

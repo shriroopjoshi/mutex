@@ -9,6 +9,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Observable;
 import java.util.Observer;
@@ -20,6 +21,11 @@ import messages.RequestMessage;
 import utils.Commons;
 import utils.Constants;
 
+/**
+ * An implementation of a Process
+ * @author shriroop
+ *
+ */
 public class Process implements Observer {
 
 	ServerSocket server;
@@ -34,12 +40,19 @@ public class Process implements Observer {
 	boolean isRequestingCS, isExecutingCS;
 	int requestTimestamp;
 	int count, phaseCount;
+	
+	// variables to collect data
+	int messagesSent, messagesReceived;
+	long time;
 
 	public Process() throws IOException {
 		clock = new Clock();
 		isRequestingCS = false;
 		isExecutingCS = false;
 		requestTimestamp = -1;
+		messagesSent = 0;
+		messagesReceived = 0;
+		time = 0;
 	}
 
 	private void init() throws UnknownHostException, IOException {
@@ -76,6 +89,7 @@ public class Process implements Observer {
 	public void startProcess() throws UnknownHostException, IOException, InterruptedException {
 		init();
 
+		// Start a receiver on a new thead, so that it can always listen to new messages
 		this.server = new ServerSocket(Constants.LISTENING_PORT);
 		receiver = new Receiver(server);
 		receiver.addObserver(Process.this);
@@ -83,6 +97,7 @@ public class Process implements Observer {
 		t.setName("ReceiverThread");
 		t.start();
 
+		// Start PHASE-I
 		phaseOne();
 	}
 
@@ -99,11 +114,7 @@ public class Process implements Observer {
 		count = 0;
 		phaseCount = Constants.PHASE_TWO_COUNT;
 		phase = Phases.PHASE_TWO;
-		if (processNumber % 2 != 0) {
-			requestCriticalSection();
-		} else {
-			count++;
-		}
+		requestCriticalSection();
 	}
 
 	private void requestCriticalSection() throws UnknownHostException, IOException {
@@ -113,26 +124,39 @@ public class Process implements Observer {
 			int t = Commons.wait(5, 10);
 			Commons.log("Waited for " + t + " units", processNumber);
 		} else if (phase == Phases.PHASE_TWO) {
-			int t = Commons.wait(45, 50);
+			int t;
+			if (processNumber % 2 != 0)
+				t = Commons.wait(45, 50);
+			else
+				t = Commons.wait(5, 10);
 			Commons.log("Waited for " + t + " units", processNumber);
 		}
 		this.isRequestingCS = true;
 		requestTimestamp = -1;
+		
+		// Initialize reply_set
+		// This is helpful for Roucairol and Carvalho optimization 
 		replySet = new boolean[processes.keySet().size() + 1];
 		replySet[processNumber] = true;
 
 		int tick = clock.event();
 		requestTimestamp = tick;
+		time = new Date().getTime();
 		Commons.log("Sending REQUEST at t = " + tick, processNumber);
 		RequestMessage rm = new RequestMessage(processNumber, tick);
 		sendToAll(rm.toString());
 	}
 
+	/**
+	 * An implementation of critical section
+	 */
 	private void criticalSection() {
 		this.isRequestingCS = false;
 		this.isExecutingCS = true;
-		Commons.log("\t\t\t\t* * *\n\t\t\tEntering CRITICAL SECTION at t = " + clock.peek() + "\n\t\t\t\t\t* * *",
-				processNumber);
+		time = new Date().getTime() - time;
+		Commons.log("Time required to enter critical section = " + time + " millisec", processNumber);
+		Commons.log("\t\t\t\t* * *\n\t\t\tEntering CRITICAL SECTION at t = " + clock.peek() + "\n\t\t\tPhysical time: "
+				+ new Date().toString() + "\n\t\t\t\t\t* * *", processNumber);
 		Commons.wait(3);
 		this.isExecutingCS = false;
 		count++;
@@ -141,6 +165,7 @@ public class Process implements Observer {
 	private void sendMessage(int pid, String message) throws IOException {
 		Socket s = new Socket(processes.get(pid).host, Constants.LISTENING_PORT);
 		Commons.writeToSocket(s, message);
+		messagesSent += 1;
 		s.close();
 	}
 
@@ -150,6 +175,9 @@ public class Process implements Observer {
 		}
 	}
 
+	/**
+	 * Check for replies from all. If yes, enter Critical Section
+	 */
 	public void tryCriticalSection() {
 		boolean allReplies = true;
 		for (boolean b : replySet) {
@@ -162,34 +190,45 @@ public class Process implements Observer {
 		}
 	}
 
+	/**
+	 * Receiving point for the incoming messages
+	 * This function implements the RECEIVE(Pi) rule of the algorithm
+	 */
 	@Override
 	public synchronized void update(Observable o, Object arg) {
 		int tick;
 		try {
+			messagesReceived += 1;
 			if (arg instanceof ReplyMessage) {
+				// Received a REPLY
 				ReplyMessage msg = (ReplyMessage) arg;
 				tick = clock.update(msg.getTimestamp());
 				Commons.log("Received REPLY from PROCESS - " + (msg.getPid() + 1) + " at t = " + tick, processNumber);
 				replySet[msg.getPid()] = true;
 				tryCriticalSection();
 			} else if (arg instanceof RequestMessage) {
+				// Received a REQUEST
 				RequestMessage msg = (RequestMessage) arg;
 				tick = clock.update(msg.getTimestamp());
 				Commons.log("Received REQUEST from PROCESS - " + (msg.getPid() + 1) + " at t = " + tick, processNumber);
 				if (!this.isRequestingCS) {
+					// Send a reply, as I am not requesting CS
 					ReplyMessage rm = new ReplyMessage(processNumber, tick);
 					Commons.log("Sending REPLY to PROCESS - " + (rm.getPid() + 1) + " at t = " + tick, processNumber);
 					sendMessage(msg.getPid(), rm.toString());
 				} else if (!this.isExecutingCS) {
 					if (requestTimestamp > tick) {
+						// I am requesting CS, send reply only if T(m) > T
 						ReplyMessage rm = new ReplyMessage(processNumber, tick);
 						Commons.log("Sending REPLY to PROCESS - " + (rm.getPid() + 1) + " at t = " + tick,
 								processNumber);
 						sendMessage(msg.getPid(), rm.toString());
 					} else {
+						// defer reply
 						addToDeferReplySet(msg.getPid());
 					}
 				} else {
+					// defer reply
 					addToDeferReplySet(msg.getPid());
 				}
 			} else {
@@ -214,11 +253,19 @@ public class Process implements Observer {
 		Commons.writeToSocket(s, rm.toString());
 		BufferedReader br = new BufferedReader(new InputStreamReader(s.getInputStream()));
 		br.readLine();
+		// Print statistics before exiting
+		Commons.log("Messages sent: " + messagesSent, processNumber);
+		Commons.log("Messages received: " + messagesReceived, processNumber);
 		System.exit(0);
 	}
 
+	/**
+	 * A thread which takes control after recceiving all replies.
+	 * This is to help receive-thread function smoothly
+	 * @author shriroop
+	 *
+	 */
 	class ProcessThread implements Runnable {
-
 		@Override
 		public void run() {
 			criticalSection();
@@ -231,15 +278,7 @@ public class Process implements Observer {
 						exit();
 					}
 				} else {
-					if (phase == Phases.PHASE_ONE) {
-						requestCriticalSection();
-					} else {
-						if (processNumber % 2 != 0) {
-							requestCriticalSection();
-						} else {
-							count++;
-						}
-					}
+					requestCriticalSection();
 				}
 			} catch (IOException e) {
 				e.printStackTrace();

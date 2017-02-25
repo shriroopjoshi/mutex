@@ -1,5 +1,10 @@
 package process;
 
+/**
+ * Implementation of Lamport's logical clock
+ * @author shriroop
+ *
+ */
 public class Clock {
 
 	private int tick;

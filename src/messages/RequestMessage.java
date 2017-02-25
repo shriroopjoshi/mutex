@@ -3,6 +3,11 @@ package messages;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+/**
+ * Request message sent by node to enter the critical section
+ * @author shriroop
+ *
+ */
 public class RequestMessage extends Message {
 
 	int pid;

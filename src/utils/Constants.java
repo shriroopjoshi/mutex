@@ -1,5 +1,10 @@
 package utils;
 
+/**
+ * A container to store all properties
+ * @author shriroop
+ *
+ */
 public class Constants {
 
 	public static int LISTENING_PORT;

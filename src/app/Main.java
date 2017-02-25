@@ -8,6 +8,11 @@ import process.Process;
 import utils.Commons;
 import utils.Constants;
 
+/**
+ * Entry point for the program
+ * @author shriroop
+ *
+ */
 public class Main {
 
 	public static void main(String[] args) throws IOException, InterruptedException {
