@@ -23,6 +23,7 @@ import utils.Constants;
 
 /**
  * An implementation of a Process
+ * 
  * @author shriroop
  *
  */
@@ -35,14 +36,16 @@ public class Process implements Observer {
 	Phases phase;
 	Clock clock;
 	ArrayList<Integer> deferSet;
-	boolean[] replySet;
+	volatile boolean[] replySet;
+	volatile boolean[] optimizationSet; // set for optimization
 
-	boolean isRequestingCS, isExecutingCS;
+	volatile boolean isRequestingCS, isExecutingCS;
 	int requestTimestamp;
-	int count, phaseCount;
-	
+	volatile int count, phaseCount;
+	volatile boolean flag;
+
 	// variables to collect data
-	int messagesSent, messagesReceived;
+	volatile int messagesSent, messagesReceived;
 	long time;
 
 	public Process() throws IOException {
@@ -62,7 +65,7 @@ public class Process implements Observer {
 		try {
 			s = new Socket(Constants.PROC_ZERO_HOST, Constants.PROC_ZERO_PORT);
 		} catch (IOException ex) {
-			System.out.println("PROCESS - 0 not accessible");
+			Commons.log("PROCESS - 0 not accessible");
 			System.exit(1);
 		}
 		ReadyMessage rm = new ReadyMessage(address);
@@ -83,13 +86,17 @@ public class Process implements Observer {
 				processes.put(pid, p);
 			}
 		}
+
+		replySet = new boolean[processes.keySet().size() + 1];
+		optimizationSet = new boolean[processes.keySet().size() + 1];
 		Commons.log("I am process #" + (processNumber + 1), processNumber);
 	}
 
 	public void startProcess() throws UnknownHostException, IOException, InterruptedException {
 		init();
 
-		// Start a receiver on a new thead, so that it can always listen to new messages
+		// Start a receiver on a new thead, so that it can always listen to new
+		// messages
 		this.server = new ServerSocket(Constants.LISTENING_PORT);
 		receiver = new Receiver(server);
 		receiver.addObserver(Process.this);
@@ -102,7 +109,7 @@ public class Process implements Observer {
 	}
 
 	private void phaseOne() throws UnknownHostException, IOException {
-		Commons.log("Starting PHASE-I", processNumber);
+		Commons.log("---- Starting PHASE-I ----", processNumber);
 		count = 0;
 		phaseCount = Constants.PHASE_ONE_COUNT;
 		phase = Phases.PHASE_ONE;
@@ -110,7 +117,7 @@ public class Process implements Observer {
 	}
 
 	private void phaseTwo() throws UnknownHostException, IOException {
-		Commons.log("Starting PHASE-II", processNumber);
+		Commons.log("---- Starting PHASE-II ----", processNumber);
 		count = 0;
 		phaseCount = Constants.PHASE_TWO_COUNT;
 		phase = Phases.PHASE_TWO;
@@ -133,18 +140,23 @@ public class Process implements Observer {
 		}
 		this.isRequestingCS = true;
 		requestTimestamp = -1;
-		
-		// Initialize reply_set
-		// This is helpful for Roucairol and Carvalho optimization 
-		replySet = new boolean[processes.keySet().size() + 1];
-		replySet[processNumber] = true;
 
+		// Initialize reply_set
+		// This is helpful for Roucairol and Carvalho optimization
+		replySet[processNumber] = true;
+		optimizationSet[processNumber] = true;
+		flag = true;
 		int tick = clock.event();
 		requestTimestamp = tick;
 		time = new Date().getTime();
-		Commons.log("Sending REQUEST at t = " + tick, processNumber);
 		RequestMessage rm = new RequestMessage(processNumber, tick);
-		sendToAll(rm.toString());
+		//sendToAll(rm.toString());
+		for(int i = 0; i < optimizationSet.length; i++)
+			if(!optimizationSet[i]) {
+				Commons.log("Sending REQUEST to Process - " + (i + 1) + " at t = " + tick, processNumber);
+				sendMessage(processes.get(i).pid, rm.toString());
+			}
+		tryCriticalSection();
 	}
 
 	/**
@@ -184,15 +196,20 @@ public class Process implements Observer {
 			allReplies &= b;
 		}
 		if (allReplies) {
-			Thread t = new Thread(new ProcessThread());
-			t.setName("ProcessThread");
-			t.start();
+			if (flag) {
+				String p = this.phase == Phases.PHASE_ONE ? "PHASE_ONE" : "PHASE_TWO";
+				//System.out.println("\n Phase = " + p + " | count = " + this.count + "\n");
+				Thread t = new Thread(new ProcessThread());
+				t.setName("ProcessThread");
+				t.start();
+				flag = !flag;
+			}
 		}
 	}
 
 	/**
-	 * Receiving point for the incoming messages
-	 * This function implements the RECEIVE(Pi) rule of the algorithm
+	 * Receiving point for the incoming messages This function implements the
+	 * RECEIVE(Pi) rule of the algorithm
 	 */
 	@Override
 	public synchronized void update(Observable o, Object arg) {
@@ -205,6 +222,7 @@ public class Process implements Observer {
 				tick = clock.update(msg.getTimestamp());
 				Commons.log("Received REPLY from PROCESS - " + (msg.getPid() + 1) + " at t = " + tick, processNumber);
 				replySet[msg.getPid()] = true;
+				optimizationSet[msg.getPid()] = true;
 				tryCriticalSection();
 			} else if (arg instanceof RequestMessage) {
 				// Received a REQUEST
@@ -213,22 +231,42 @@ public class Process implements Observer {
 				Commons.log("Received REQUEST from PROCESS - " + (msg.getPid() + 1) + " at t = " + tick, processNumber);
 				if (!this.isRequestingCS) {
 					// Send a reply, as I am not requesting CS
+					// System.out.println("[NOT REQ CS]");
+					tick = clock.event();
 					ReplyMessage rm = new ReplyMessage(processNumber, tick);
-					Commons.log("Sending REPLY to PROCESS - " + (rm.getPid() + 1) + " at t = " + tick, processNumber);
+					Commons.log("Sending REPLY to PROCESS - " + (msg.getPid() + 1) + " at t = " + tick, processNumber);
 					sendMessage(msg.getPid(), rm.toString());
+					optimizationSet[msg.getPid()] = false;
 				} else if (!this.isExecutingCS) {
-					if (requestTimestamp > tick) {
+					if (requestTimestamp > msg.getTimestamp()) {
 						// I am requesting CS, send reply only if T(m) > T
+						tick = clock.event();
 						ReplyMessage rm = new ReplyMessage(processNumber, tick);
-						Commons.log("Sending REPLY to PROCESS - " + (rm.getPid() + 1) + " at t = " + tick,
+						Commons.log("Sending REPLY to PROCESS - " + (msg.getPid() + 1) + " at t = " + tick,
 								processNumber);
 						sendMessage(msg.getPid(), rm.toString());
+						optimizationSet[msg.getPid()] = false;
 					} else {
-						// defer reply
-						addToDeferReplySet(msg.getPid());
+						// If both processes requested CS at same time, give
+						// preference to process with lower PID
+						if (requestTimestamp == msg.getTimestamp()) {
+							if (processNumber < msg.getPid()) {
+								addToDeferReplySet(msg.getPid());
+							} else {
+								tick = clock.event();
+								ReplyMessage rm = new ReplyMessage(processNumber, tick);
+								Commons.log("Sending REPLY to PROCESS - " + (msg.getPid() + 1) + " at t = " + tick,
+										processNumber);
+								sendMessage(msg.getPid(), rm.toString());
+								optimizationSet[msg.getPid()] = false;
+							}
+						} else {
+							// defer reply
+							addToDeferReplySet(msg.getPid());
+						}
 					}
 				} else {
-					// defer reply
+					// defer reply. I am executing CS
 					addToDeferReplySet(msg.getPid());
 				}
 			} else {
@@ -248,20 +286,22 @@ public class Process implements Observer {
 
 	private void exit() throws UnknownHostException, IOException {
 		Commons.log("Exiting now", processNumber);
+		//System.out.println(Thread.currentThread().getName());
 		Socket s = new Socket(Constants.PROC_ZERO_HOST, Constants.PROC_ZERO_PORT);
 		ReadyMessage rm = new ReadyMessage(InetAddress.getLocalHost().getHostAddress());
 		Commons.writeToSocket(s, rm.toString());
 		BufferedReader br = new BufferedReader(new InputStreamReader(s.getInputStream()));
 		br.readLine();
 		// Print statistics before exiting
-		Commons.log("Messages sent: " + messagesSent, processNumber);
-		Commons.log("Messages received: " + messagesReceived, processNumber);
+		Commons.log("Messages sent: " + messagesSent / 2, processNumber);
+		Commons.log("Messages received: " + messagesReceived / 2, processNumber);
 		System.exit(0);
 	}
 
 	/**
-	 * A thread which takes control after recceiving all replies.
-	 * This is to help receive-thread function smoothly
+	 * A thread which takes control after recceiving all replies. This is to
+	 * help receive-thread function smoothly
+	 * 
 	 * @author shriroop
 	 *
 	 */
@@ -295,6 +335,7 @@ public class Process implements Observer {
 				ReplyMessage rm = new ReplyMessage(processNumber, tick);
 				Commons.log("Sending REPLY to PROCESS - " + (rm.getPid() + 1) + " at t = " + tick, processNumber);
 				sendMessage(pid, rm.toString());
+				optimizationSet[pid] = false;
 			}
 			deferSet = null;
 		}

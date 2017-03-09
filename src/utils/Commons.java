@@ -63,4 +63,11 @@ public class Commons {
 			now = System.currentTimeMillis();
 		}
 	}
+	
+	public static void printReplySet(boolean[] set) {
+		System.out.print("ReplySet: [ ");
+		for(boolean b: set)
+			System.out.print(b + " ");
+		System.out.println("]");
+	}
 }

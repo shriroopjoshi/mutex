@@ -6,6 +6,7 @@ import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Properties;
 
 import messages.ReadyMessage;
@@ -22,7 +23,7 @@ import utils.Constants;
 public class PZero {
 
 	ServerSocket server;
-	ArrayList<String> hosts;
+	HashMap<String, Boolean> hosts;
 
 	public PZero() throws IOException {
 		Commons.log("Reading configurations", -1);
@@ -32,7 +33,7 @@ public class PZero {
 		Constants.NUM_PROC = Integer.parseInt(configs.getProperty("number.process"));
 		Constants.PROC_ZERO_HOST = configs.getProperty("processzero.host");
 		server = new ServerSocket(Constants.PROC_ZERO_PORT);
-		hosts = new ArrayList<>(Constants.NUM_PROC);
+		hosts = new HashMap<>(Constants.NUM_PROC);
 	}
 
 	public void start() throws IOException {
@@ -47,14 +48,15 @@ public class PZero {
 			BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 			ReadyMessage msg = ReadyMessage.getObjectFromString(br.readLine());
 			Commons.log("Process started at " + msg.getHost(), -1);
-			hosts.add(msg.getHost());
+			hosts.put(msg.getHost(), true);
 			sockets.add(socket);
 			counter++;
 		}
 		/*
 		 * Send the IP address of all nodes to every node as ACK
 		 */
-		ReadyReplyMessage rrm = new ReadyReplyMessage(hosts);
+		ArrayList<String> h = new ArrayList<>(hosts.keySet());
+		ReadyReplyMessage rrm = new ReadyReplyMessage(h);
 		for (Socket socket : sockets) {
 			Commons.writeToSocket(socket, rrm.toString());
 		}
@@ -65,13 +67,15 @@ public class PZero {
 		Commons.log("Waiting for exit messages", -1);
 		counter = 0;
 		sockets = new ArrayList<>();
-		while (counter < Constants.NUM_PROC) {
+		while (allCompleted(hosts)) {
 			Socket socket = server.accept();
 			BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 			ReadyMessage msg = ReadyMessage.getObjectFromString(br.readLine());
-			Commons.log("Process terminated at " + msg.getHost(), -1);
-			hosts.add(msg.getHost());
-			sockets.add(socket);
+			if(hosts.get(msg.getHost())) {
+				Commons.log("Process terminated at " + msg.getHost(), -1);
+				sockets.add(socket);
+				hosts.put(msg.getHost(), false);
+			}
 			counter++;
 		}
 		counter = 0;
@@ -84,4 +88,14 @@ public class PZero {
 
 		Commons.log("Exiting now", -1);
 	}
+
+	private boolean allCompleted(HashMap<String, Boolean> hosts) {
+		// TODO Auto-generated method stub
+		boolean incomplete = false;
+		for(String host: hosts.keySet()) {
+			incomplete = incomplete | hosts.get(host);
+		}
+		return incomplete;
+	}
+
 }
